@@ -4,4 +4,6 @@ numpy==1.26.4
 pandas
 tensorflow==2.16.1
 Pillow==10.2.0
+opencv-python
+
 
