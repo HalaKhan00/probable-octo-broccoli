@@ -36,10 +36,20 @@ def get_stroke_from_canvas(stroke_paths, max_len=100):
 
 # Image processor
 def preprocess_canvas_image(canvas_img):
-    image = Image.fromarray(canvas_img).convert("RGB")
+    if canvas_img is None:
+        raise ValueError("Canvas image is None. Please draw something first.")
+
+    image = np.array(canvas_img)
+
+    # Convert to uint8 if needed
+    if image.dtype != np.uint8:
+        image = (image * 255).astype(np.uint8)
+
+    image = Image.fromarray(image).convert("RGB")
     image = np.array(image).astype(np.float32) / 255.0
     image = resize(image, (224, 224)).numpy()
     return image
+
 
 # UI
 st.title("🧠 Clock Drawing Alzheimer Predictor (Draw on Canvas)")
@@ -78,5 +88,3 @@ if canvas_result.image_data is not None and canvas_result.json_data is not None:
             st.subheader("Prediction Result:")
             st.error(f"🧠 Alzheimer Detected (Confidence: {confidence:.2f})")
         st.caption(f"🔍 Raw model score: {confidence:.4f}")
-
-
