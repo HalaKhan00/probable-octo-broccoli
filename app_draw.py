@@ -8,7 +8,7 @@ from tensorflow.keras.models import load_model
 import cv2
 
 # Load trained model
-@st.cache_resource
+@st.cache
 def load_trained_model():
     return load_model('hybrid_transformer_model_final.keras')
 
@@ -48,7 +48,39 @@ def preprocess_canvas_image(canvas_img):
     image = Image.fromarray(image).convert("RGB")
     image = np.array(image).astype(np.float32) / 255.0
     image = resize(image, (224, 224)).numpy()
+
+    # Check for NaN values
+    if np.isnan(image).any():
+        raise ValueError("The processed image contains NaN values.")
+    
     return image
+
+def get_stroke_from_canvas(stroke_paths, max_len=100):
+    strokes = []
+    for path in stroke_paths:
+        points = path.get("path", [])
+        for i, point in enumerate(points):
+            if isinstance(point, list) and len(point) >= 2:
+                try:
+                    x = float(point[0])
+                    y = float(point[1])
+                    pen = 1.0 if i < len(points) - 1 else 0.0
+                    strokes.append([x, y, pen])
+                except ValueError:
+                    continue  # skip bad points like "M" or malformed coords
+    strokes = strokes[:max_len]
+    while len(strokes) < max_len:
+        strokes.append([0.0, 0.0, 0.0])
+
+    # Convert to numpy array
+    stroke_array = np.array(strokes, dtype=np.float32)
+
+    # Check for NaN values in stroke data
+    if np.isnan(stroke_array).any():
+        raise ValueError("The stroke data contains NaN values.")
+    
+    return stroke_array
+
 
 
 # UI
@@ -72,21 +104,29 @@ if canvas_result.image_data is not None and canvas_result.json_data is not None:
     st.image(canvas_result.image_data, caption="Your Clock Drawing", width=250)
 
     if st.button("🧠 Submit for Prediction"):
-        stroke_array = get_stroke_from_canvas(canvas_result.json_data["objects"])
-        image_array = preprocess_canvas_image(canvas_result.image_data)
+        try:
+            stroke_array = get_stroke_from_canvas(canvas_result.json_data["objects"])
+            image_array = preprocess_canvas_image(canvas_result.image_data)
 
-        pred = model.predict({
-            "image_input": np.expand_dims(image_array, axis=0),
-            "sequence_input": np.expand_dims(stroke_array, axis=0)
-    })
+            # Predict
+            pred = model.predict({
+                "image_input": np.expand_dims(image_array, axis=0),
+                "sequence_input": np.expand_dims(stroke_array, axis=0)
+            })
 
-        confidence = float(pred[0][0])
-        if confidence < 0.5:
-            st.subheader("Prediction Result:")
-            st.success(f"✅ Healthy (Confidence: {1 - confidence:.2f})")
-        else:
-            st.subheader("Prediction Result:")
-            st.error(f"🧠 Alzheimer Detected (Confidence: {confidence:.2f})")
-        st.caption(f"🔍 Raw model score: {confidence:.4f}")
+            confidence = float(pred[0][0])
+            
+            if confidence < 0.5:
+                st.subheader("Prediction Result:")
+                st.success(f"✅ Healthy (Confidence: {1 - confidence:.2f})")
+            else:
+                st.subheader("Prediction Result:")
+                st.error(f"🧠 Alzheimer Detected (Confidence: {confidence:.2f})")
+
+            st.caption(f"🔍 Raw model score: {confidence:.4f}")
+            
+        except ValueError as e:
+            st.error(f"Error: {e}")
+
 
 
