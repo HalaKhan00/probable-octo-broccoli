@@ -8,7 +8,6 @@ from tensorflow.keras.models import load_model
 import cv2
 
 # Load trained model
-@st.cache
 def load_trained_model():
     return load_model('hybrid_transformer_model_final.keras')
 
