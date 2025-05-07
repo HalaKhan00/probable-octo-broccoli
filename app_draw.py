@@ -10,7 +10,7 @@ import cv2
 # Load trained model
 @st.cache_resource
 def load_trained_model():
-    return load_model('hybrid_cnn_rnn_model_final.keras')
+    return load_model('hybrid_transformer_model_final.keras')
 
 model = load_trained_model()
 
@@ -88,3 +88,5 @@ if canvas_result.image_data is not None and canvas_result.json_data is not None:
             st.subheader("Prediction Result:")
             st.error(f"🧠 Alzheimer Detected (Confidence: {confidence:.2f})")
         st.caption(f"🔍 Raw model score: {confidence:.4f}")
+
+
